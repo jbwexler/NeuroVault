@@ -1,12 +1,13 @@
 from .models import Collection, Image, Atlas, StatisticMap, NIDMResults, NIDMResultStatisticMap
 from .forms import CollectionFormSet, CollectionForm, UploadFileForm, SimplifiedStatisticMapForm,\
-    StatisticMapForm, EditStatisticMapForm, OwnerCollectionForm, EditAtlasForm, AtlasForm, \
+    StatisticMapForm, EditStatisticMapForm, OwnerCollectionForm, EditAtlasForm, AtlasForm, ImageForm, \
     EditNIDMResultStatisticMapForm, NIDMResultsForm, NIDMViewForm
 from django.http.response import HttpResponseRedirect, HttpResponseForbidden
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render_to_response, render, redirect
 from django.template.context import RequestContext
 from django.core.files.base import ContentFile
+from django.forms.widgets import CheckboxInput
 from neurovault.apps.statmaps.utils import split_filename, generate_pycortex_volume, \
     generate_pycortex_static, generate_url_token, HttpRedirectException, get_paper_properties, \
     get_file_ctime, detect_afni4D, split_afni4D_to_3D, splitext_nii_gz, mkdir_p, \
@@ -100,6 +101,11 @@ def edit_images(request, collection_cid):
         if formset.is_valid():
             formset.save()
             return HttpResponseRedirect(collection.get_absolute_url())
+        else:
+            for x in range(len(formset)):
+                if str(formset[x].errors.get('file'))  == '<ul class="errorlist"><li>Voxels with a value of zero is greater than %s%%</li></ul>' % ImageForm.maxZeroPercent:
+                    formset[x].fields['checkbox'].widget = CheckboxInput()
+                    formset[x].fields['checkbox'].initial = True
     else:
         formset = CollectionFormSet(instance=collection)
 

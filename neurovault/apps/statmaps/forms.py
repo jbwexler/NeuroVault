@@ -29,7 +29,7 @@ from django.utils.safestring import mark_safe
 from django.forms.util import flatatt
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.files.base import ContentFile
-from django.forms.widgets import HiddenInput
+from django.forms.widgets import HiddenInput, CheckboxInput
 from neurovault import settings
 from django.core.files import File
 
@@ -328,7 +328,9 @@ class OwnerCollectionForm(CollectionForm):
 
 class ImageForm(ModelForm):
     hdr_file = FileField(required=False, label='.hdr part of the map (if applicable)')
-
+    checkbox = forms.BooleanField(required=False, label='Ignore warning', widget=forms.HiddenInput, initial=False)
+    maxZeroPercent = 80
+    
     def __init__(self, *args, **kwargs):
         super(ImageForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper(self)
@@ -340,6 +342,7 @@ class ImageForm(ModelForm):
     class Meta:
         model = Image
         exclude = []
+
 
     def clean(self, **kwargs):
 
@@ -407,6 +410,23 @@ class ImageForm(ModelForm):
                 # detect AFNI 4D files and prepare 3D slices
                 if nii_tmp is not None and detect_afni4D(nii_tmp):
                     self.afni_subbricks = split_afni4D_to_3D(nii_tmp)
+                    
+                # check if portion of voxels with a value of zero is less than amount specified above as maxZero
+                is_map = 'map_type' in self.fields
+                if is_map:
+                    maxZero = self.maxZeroPercent/100.0
+                    imgData = nii.get_data()
+                    isZero = (imgData == 0).sum()/float(imgData.size)
+                     
+                    if not (cleaned_data.get('checkbox') == True) and (isZero > maxZero):
+                        self._errors["file"] = self.error_class(["Voxels with a value of zero is greater than %s%%" % self.maxZeroPercent])
+                        self.fields['name'].widget = CheckboxInput()
+                        print cleaned_data.get('name'), 'error'
+                    else:
+                        print cleaned_data.get('name'), 'no error'
+                        self.fields['name'].widget = HiddenInput()
+                    print self
+
 
             finally:
                 try:
@@ -426,7 +446,7 @@ class StatisticMapForm(ImageForm):
     class Meta(ImageForm.Meta):
         model = StatisticMap
         fields = ('name', 'collection', 'description', 'map_type',
-                  'file', 'hdr_file', 'tags', 'statistic_parameters',
+                  'file', 'checkbox', 'hdr_file', 'tags', 'statistic_parameters',
                   'smoothness_fwhm', 'contrast_definition', 'contrast_definition_cogatlas')
 
 
