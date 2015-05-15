@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.db import models
 from neurovault.apps.statmaps.storage import NiftiGzStorage, NIDMStorage
-
+ 
 from taggit.managers import TaggableManager
 from taggit.models import GenericTaggedItemBase, TagBase
 from xml import etree
